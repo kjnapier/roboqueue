@@ -1,4 +1,4 @@
-![Alt text](assets/logo.webp)
+<img src="assets/logo.webp" alt="logo" width="200"/>
 
 An AI-powered solution to the telescope queueing problem.
 
