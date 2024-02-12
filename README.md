@@ -1,4 +1,6 @@
-<center><img src="assets/logo.webp" alt="logo" width="400"/></center>
+<p align="center">
+    <img src="assets/logo.webp" alt="logo" width="400"/>
+</p>
 
 An AI-powered solution to the telescope queueing problem.
 
