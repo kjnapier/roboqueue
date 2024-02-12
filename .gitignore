@@ -1,0 +1,21 @@
+
+./*.egg-info
+*.pdf
+
+/dist/
+.DS_Store
+notebooks/.DS_Store
+
+/spacerocks/data/spice/
+/spacerocks/data/mpc/
+
+/spacerocks/pyOrbfit.py
+
+# Ipython checkpoints
+/.ipynb_checkpoints/
+/notebooks/.ipynb_checkpoints/
+/roboqueue/.ipynb_checkpoints/
+/roboqueue/test/__pycache__/
+
+/build/
+/roboqueue/__pycache__/
