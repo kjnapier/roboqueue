@@ -2,6 +2,8 @@
 ./*.egg-info
 *.pdf
 
+*egg-info
+
 /dist/
 .DS_Store
 notebooks/.DS_Store
