@@ -24,3 +24,4 @@ class TargetList:
             exptimes.append(exptime)
 
         return ras, decs, alts, azs, exptimes
+    

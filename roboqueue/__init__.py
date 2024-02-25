@@ -6,3 +6,4 @@ from .movingtarget import MovingTarget
 
 from .conditions import Conditions
 from .telescope import Telescope
+from .gymwrapper import TelescopeSchedulingEnv

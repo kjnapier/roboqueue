@@ -10,7 +10,7 @@ To install, clone the repo. Then run:
 
 ```zsh
 cd roboqueue
-pip install .
+pip install -e .
 ```
 
 The package relies on [spacerocks](https://github.com/kjnapier/spacerocks). 
