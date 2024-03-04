@@ -9,14 +9,14 @@ class TelescopeSchedulingEnv(gym.Env):
     def __init__(self, telescope, conditions, max_duration, sky_state, targets, reward_config):
         super(TelescopeSchedulingEnv, self).__init__()
 
-        self.telecope = telescope
+        self.telescope = telescope
         self.conditions = conditions
         self.max_duration = max_duration
         self.sky_state = sky_state
         self.reward_config = reward_config
         self.total_duration = 0.0
         self.observed_targets = {}
-        self.current_time = time_handler.get_current_time()
+        self.current_time = time_handler('12 February 2024').utc.jd[0] #time_handler.get_current_time()
         self.epoch = 0.0
 
         # Current observation
@@ -24,7 +24,7 @@ class TelescopeSchedulingEnv(gym.Env):
         self.targets = targets
 
         # Action space for now is just a target object (since ordering a list)
-        self.action_space = spaces.Discrete(len(self.sky_state))
+        self.action_space = spaces.Discrete(len(self.sky_state)+1)
 
         # Observation space for each target includes ra, dec, alt, az, exptime
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(self.sky_state), 5), dtype=np.float32)
@@ -33,6 +33,8 @@ class TelescopeSchedulingEnv(gym.Env):
 
 
     def step(self, action):
+        # TODO: add logic for "do nothing"
+
         # Update the total duration and current time from selected action
         self.total_duration += self.observation[action][4]
 
