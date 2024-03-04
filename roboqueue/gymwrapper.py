@@ -34,6 +34,8 @@ class TelescopeSchedulingEnv(gym.Env):
 
     def step(self, action):
         # TODO: add logic for "do nothing"
+        # index targets based on action to get single exptime
+        ra, dec, alt, az, exptime = self.targets.targets[action].at(self.epoch, self.telescope, self.conditions)
 
         # Update the total duration and current time from selected action
         self.total_duration += self.observation[action][4]
@@ -42,7 +44,9 @@ class TelescopeSchedulingEnv(gym.Env):
         self.observed_targets[action] = True
 
         # Update the action space to reflect the current number of targets
-        self.action_space = spaces.Discrete(len(self.targets.targets))
+        self.action_space = spaces.Discrete(len(self.targets.targets)+1)
+
+        # TODO: change action to index when removing target, make sure first option is "do nothing"
 
         # Reward for now is f(exptime, n_observed_targets)
         reward = -self.reward_config['exptime'] * exptime + self.reward_config['n_observed_targets'] * len(self.observed_targets)
@@ -55,9 +59,13 @@ class TelescopeSchedulingEnv(gym.Env):
         ra, dec, alt, az, exptime = self.targets.at(self.epoch, self.telescope, self.conditions)
 
         for star in self.observation:
+            print('star', star)
             # only update remaining targets
             if star not in self.observed_targets:
                 self.observation[star] = np.array([ra[star], dec[star], alt[star], az[star], exptime[star]])
+
+        # Remove the target from list
+        self.targets.targets.pop(action)
 
         # Update the current time
         self.current_time = self.epoch
