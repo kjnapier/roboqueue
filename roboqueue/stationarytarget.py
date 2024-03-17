@@ -1,4 +1,4 @@
-from spacerocks import SpaceRock
+from spacerocks.spacerock import SpaceRock
 import numpy as np
 
 from .expcal import calculate_exposure_time
@@ -11,11 +11,13 @@ HOUR_PER_DAY = 24
 
 class StationaryTarget:
 
-    def __init__(self, ra: float, dec: float, mag: float, required_snr: float):
+    def __init__(self, name: str, ra: float, dec: float, mag: float, required_snr: float):
+        self.name = name
         self.ra = ra
         self.dec = dec
         self.mag = mag
         self.required_snr = required_snr
+        self.done = False
 
     def at(self, epoch, telescope, conditions):
         
@@ -31,4 +33,4 @@ class StationaryTarget:
                                                          moon=conditions.moon, 
                                                          niter=10)
 
-        return self.ra, self.dec, alt, az, required_exposure_time
+        return self.ra, self.dec, alt, az, required_exposure_time, self.done

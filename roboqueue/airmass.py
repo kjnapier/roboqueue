@@ -13,4 +13,6 @@ def calculate_airmass(altitude: float) -> float:
     """
 
     # Calculate the airmass.
+    if altitude < 0:
+        return np.inf
     return 1 / math.sin(np.radians(np.degrees(altitude) + 244 / (165 + 47 * np.degrees(altitude) ** 1.1)))

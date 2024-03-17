@@ -48,6 +48,8 @@ def cal_snr(exptime, mag = 26.5, airmass = 1, ext_coeff = -0.31, seeing=1, rate=
     return final_snr
 
 def calculate_exposure_time(snr, mag = 26.5, airmass = 1, ext_coeff = -0.31, seeing=1, rate=0, Filter='r', moon=7, niter=10):
+    if airmass == np.inf:
+        return 1e10
     exptime = 1
     for i in range(niter):
         trail_len = rate/3600 * exptime # "/hr  

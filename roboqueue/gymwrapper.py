@@ -1,84 +1,115 @@
 # gymwrapper.py
+from roboqueue import TargetList, StationaryTarget, Telescope, Conditions
+from spacerocks.time import Time
+
 import gym
 from gym import spaces
-from roboqueue import TargetList, StationaryTarget
-from spacerocks.utils import time_handler
+
 import numpy as np
 
+from copy import deepcopy
+
+SECONDS_PER_DAY = 86_400.0
+
 class TelescopeSchedulingEnv(gym.Env):
-    def __init__(self, telescope, conditions, max_duration, sky_state, targets, reward_config):
+    def __init__(self, targets: TargetList, telescope: Telescope, conditions: Conditions, start_epoch: float, max_duration: float, reward_config: dict):
         super(TelescopeSchedulingEnv, self).__init__()
+
+        '''
+        Parameters
+        ----------
+        telescope : Telescope
+            The telescope to be used for the scheduling
+        start_epoch : float
+            The start time of the scheduling (jd)
+        conditions : Conditions
+            The conditions for the telescope scheduling
+        max_duration : float
+            The maximum duration of the scheduling in seconds
+        targets : TargetList
+            The list of targets to be observed
+        reward_config : dict
+            The configuration for the reward function
+        '''
 
         self.telescope = telescope
         self.conditions = conditions
         self.max_duration = max_duration
-        self.sky_state = sky_state
         self.reward_config = reward_config
         self.total_duration = 0.0
-        self.observed_targets = {}
-        self.current_time = time_handler('12 February 2024').utc.jd[0] #time_handler.get_current_time()
-        self.epoch = 0.0
+        self.observed_targets = []
+        self.epoch = start_epoch
 
         # Current observation
-        self.init_targets = targets
+        self.init_targets = deepcopy(targets)
         self.targets = targets
+        self.sky_state = np.array(self.targets.at(self.epoch, self.telescope, self.conditions)).T
 
         # Action space for now is just a target object (since ordering a list)
-        self.action_space = spaces.Discrete(len(self.sky_state)+1)
+        self.action_space = spaces.Discrete(len(self.targets) + 1)
 
         # Observation space for each target includes ra, dec, alt, az, exptime
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(self.sky_state), 5), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(self.targets), 6), dtype=np.float32)
 
-        print(f"[INFO] Observation space dim: {self.observation_space}, Action space dim: {self.action_space}")
+        self.initial_state = deepcopy(self)
+
+        self.do_nothing_actions = [len(self.targets)]
+
+        # print(f"[INFO] Observation space dim: {self.observation_space}, Action space dim: {self.action_space}")
 
 
     def step(self, action):
-        # TODO: add logic for "do nothing"
+
+        DO_NOTHING_PENTALTY = 1.0
+        EXTRA_PENTALTY = 60.0
+
+       # print(f"[INFO] Action: {action}")
+        if action in self.do_nothing_actions:
+            # just wait for 1 second
+            self.total_duration += DO_NOTHING_PENTALTY / SECONDS_PER_DAY
+            self.epoch += DO_NOTHING_PENTALTY / SECONDS_PER_DAY
+            self.sky_state = np.array(self.targets.at(self.epoch, self.telescope, self.conditions)).T
+            
+            reward = -self.reward_config['exptime'] * DO_NOTHING_PENTALTY
+            done = (self.total_duration >= self.max_duration) or (len(self.targets.targets) == 0)
+            return self.sky_state, reward, done, {}
+        
+
         # index targets based on action to get single exptime
-        ra, dec, alt, az, exptime = self.targets.targets[action].at(self.epoch, self.telescope, self.conditions)
+        ra, dec, alt, az, exptime, is_done = self.targets[action].at(self.epoch, self.telescope, self.conditions)
 
-        # Update the total duration and current time from selected action
-        self.total_duration += self.observation[action][4]
+        skip = is_done or (exptime > 1e5)
+        if skip:
+            print(f"[INFO] Skipping target {action}")
+            self.total_duration += EXTRA_PENTALTY / SECONDS_PER_DAY
+            self.epoch += EXTRA_PENTALTY / SECONDS_PER_DAY
+            self.sky_state = np.array(self.targets.at(self.epoch, self.telescope, self.conditions)).T
+            reward = -self.reward_config['exptime'] * EXTRA_PENTALTY
+            done = (self.total_duration >= self.max_duration) or (len(self.targets) == 0)
+            return self.sky_state, reward, done, {}
 
-        # Mark the target as observed
-        self.observed_targets[action] = True
 
-        # Update the action space to reflect the current number of targets
-        self.action_space = spaces.Discrete(len(self.targets.targets)+1)
 
-        # TODO: change action to index when removing target, make sure first option is "do nothing"
+        # self.do_nothing_actions.append(action)
+        self.targets[action].done = True
+        self.observed_targets.append(self.targets[action])
+        self.total_duration += exptime / SECONDS_PER_DAY
+        self.epoch += exptime / SECONDS_PER_DAY
 
-        # Reward for now is f(exptime, n_observed_targets)
+        self.sky_state = np.array(self.targets.at(self.epoch, self.telescope, self.conditions)).T
+
         reward = -self.reward_config['exptime'] * exptime + self.reward_config['n_observed_targets'] * len(self.observed_targets)
+        done = (self.total_duration >= self.max_duration) or (len(self.observed_targets) == len(self.targets))
 
-        # Check if the episode has ended
-        done = self.total_duration >= self.max_duration or len(self.targets.targets) == 0
+        if len(self.observed_targets) == len(self.targets):
+            print(len(self.observed_targets), len(self.targets))
+            print(f"[INFO] All targets observed. Done in {self.total_duration} days.")
 
-        # Update the observation for sky state
-        self.epoch = self.current_time + self.total_duration / 86400
-        ra, dec, alt, az, exptime = self.targets.at(self.epoch, self.telescope, self.conditions)
-
-        for star in self.observation:
-            print('star', star)
-            # only update remaining targets
-            if star not in self.observed_targets:
-                self.observation[star] = np.array([ra[star], dec[star], alt[star], az[star], exptime[star]])
-
-        # Remove the target from list
-        self.targets.targets.pop(action)
-
-        # Update the current time
-        self.current_time = self.epoch
-
-        return self.observation, self.observed_targets, reward, done
+        return self.sky_state, reward, done, {}
 
     def reset(self):
-        # Reset the state of the environment to an initial state
-        self.observed_targets = {}
-        self.targets = self.init_targets
-        self.observation = self.sky_state
-
-        return self.observation
+        self.__init__(self.init_targets, self.telescope, self.conditions, self.epoch, self.max_duration, self.reward_config)
+        return self.sky_state
 
     def render(self, mode='human'):
         # Nothing to render for now

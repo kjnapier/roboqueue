@@ -1,4 +1,4 @@
-from spacerocks.observer import Observer
+from spacerocks.observing import Observatory
 import numpy as np
 
 class Telescope:
@@ -8,6 +8,6 @@ class Telescope:
         self.obscode = obscode
         self.filter = filter
 
-        o = Observer.from_obscode(obscode)
-        self.lat = np.radians(o.lat[0])
-        self.lon = np.radians(o.lon[0])
+        o = Observatory.from_obscode(obscode)
+        self.lat = o.lat
+        self.lon = o.lon

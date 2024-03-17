@@ -1,4 +1,4 @@
-from spacerocks import SpaceRock
+from spacerocks.spacerock import SpaceRock
 import numpy as np
 
 from .expcal import calculate_exposure_time
@@ -12,8 +12,10 @@ HOUR_PER_DAY = 24
 class MovingTarget:
 
     def __init__(self, rock: SpaceRock, required_snr: float):
+        self.name = rock.name
         self.rock = rock
         self.required_snr = required_snr
+        self.done = False
 
     def at(self, epoch, telescope, conditions):
         self.rock.analytic_propagate(epoch)
@@ -38,4 +40,4 @@ class MovingTarget:
                                                          moon=conditions.moon, 
                                                          niter=10)
 
-        return ra, dec, alt, az, required_exposure_time
+        return ra, dec, alt, az, required_exposure_time, self.done
